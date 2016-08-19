@@ -49,7 +49,7 @@ function getParameterDefinitions() {
             caption: 'Output',
             values: ['Plate', 'Case', 'Back cover',
                      'Test 1u', 'Test 1u*4', 'Test 2u', 'Test 6u', 'Test 6.25u'],
-            initial: 'Back cover'
+            initial: 'Case'
         },
         {
             name: 'split',
@@ -454,7 +454,7 @@ function back_cover(params)
         let deno = split_pos.length + 1;
         let n = parseInt(params.split);
         let c = dim.center();
-        ret = ret.intersect(linear_extrude({height: 12}, split_mask_2D(n))
+        ret = ret.intersect(cube({size: [x/deno, y, 12]}).translate([n*x/deno, -y, 0])
                 ).translate([-c.x+(dim.sizeX()/deno*(((deno/2)>>0)-n)), -c.y]);
     } else {
         ret = ret.translate(dim.center().times(-1));
