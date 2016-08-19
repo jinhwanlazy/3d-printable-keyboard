@@ -1,0 +1,3 @@
+[submodule "firmware/tmk_core"]
+	path = firmware/tmk_core
+	url = https://github.com/tmk/tmk_core
