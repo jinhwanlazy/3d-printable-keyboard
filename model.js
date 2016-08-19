@@ -47,9 +47,9 @@ function getParameterDefinitions() {
             name: 'output',
             type: 'choice',
             caption: 'Output',
-            values: ['Plate', 'Case', 'Back cover',
+            values: ['Plate', 'Case', 'Back cover', 'Feet',
                      'Test 1u', 'Test 1u*4', 'Test 2u', 'Test 6u', 'Test 6.25u'],
-            initial: 'Case'
+            initial: 'Back cover'
         },
         {
             name: 'split',
@@ -443,18 +443,22 @@ function back_cover(params)
     let switches = gen_switches(layout, params);
     let sws = switches[0];
     let dim = switches[1];
+    let margin = 0.2;
     let th = 1.5;
     let x = dim.sizeX(), y = dim.sizeY();
 
-    let ret = cube({size: [x, y, th]})
-        .translate([0, -y, 0])
+    let m = 1 + margin;
+    let ret = cube({size: [x-2*m, y-2*m, th]})
+        .translate([0+m, -y+m, 0])
         .union(screw_holes(5.2, 3))
-        .subtract(screw_holes(2.6, 4));
+        .subtract(screw_holes(2.6, 4))
+        .subtract(teensy.cutout().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0-0.2]));
     if (params.split != 'No') {
         let deno = split_pos.length + 1;
         let n = parseInt(params.split);
         let c = dim.center();
-        ret = ret.intersect(cube({size: [x/deno, y, 12]}).translate([n*x/deno, -y, 0])
+        ret = ret.intersect(cube({size: [x/deno-2*margin, y-2*margin, 12]}
+                    ).translate([n*x/deno+margin, -y+margin, 0])
                 ).translate([-c.x+(dim.sizeX()/deno*(((deno/2)>>0)-n)), -c.y]);
     } else {
         ret = ret.translate(dim.center().times(-1));
@@ -482,7 +486,7 @@ function body(params)
     ret = ret.subtract(union(
         screw_holes(2.6, 10),
         cube({size: [12, 5, 8], center: [true, false, false]}).translate([teensy_pos*unit, 1, 1.0]),  // usb cable
-        teensy.slot().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0])
+        teensy.cutout().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0])
     ));
 //    ret = ret.translate(dim.center().times(-1));
     if (params.split != 'No') {
@@ -583,13 +587,14 @@ const teensy = {
         );
     },
 
-    slot: function() {
+    cutout: function() {
         let m = 0.2;
         let t = this;
-        return cube({size: [t.x+2*m, t.y+m, t.pcb_th], center: [true, false, false]}
-        ).translate([0, -t.y-m, -t.pcb_th]
-        ).union(mini_usb().mirroredZ().translate([0, 0, -t.pcb_th])
-        );
+        return cube({size: [t.x+2*m, t.y+m, t.pcb_th], center: [true, false, false]})
+            .translate([0, -t.y-m, -t.pcb_th])
+            .union(mini_usb().mirroredZ().translate([0, 0, -t.pcb_th]))
+            .union(cube({size: [2.6, t.y+m, 0.4]}).rotateZ(180).translate([t.x/2+m, 0, 0]))
+            .union(cube({size: [2.6, t.y+m, 0.4]}).mirroredX().rotateZ(180).translate([-t.x/2-m, 0, 0]));
     }
 }
 
@@ -701,6 +706,21 @@ function gen_case(w, h, params)
     return ret;
 }
 
+function feet()
+{
+    let tilt = 9;  // tilt in degree, just approx
+    let h = 4*unit*Math.tan(tilt*Math.PI/180.0);
+    echo("feet height: " + h.toString());
+    let h1 = 0.4*h;
+    let h2 = 0.6*h;
+    let d1 = 20;
+    let d2 = 9;
+    let ret = cylinder({d: d1, h: h1});
+    ret = ret.union(cylinder({d1: d1, d2: d2, h: h2}).translate([0, 0, h1]));
+    ret = ret.union(ret.translate([d1*1.1, 0, 0]));
+    return ret;
+}
+
 function main(params)
 {
     if (params.output == 'Test 1u')    return test_object(1, params);
@@ -710,7 +730,9 @@ function main(params)
     if (params.output == 'Test 6.25u') return test_object(6.25, params);
     if (params.output == 'Case')       return body(params);
     if (params.output == 'Plate')      return plate_2D(params);
-    if (params.output == 'Back cover') return back_cover(params)
+    if (params.output == 'Back cover') return back_cover(params);
+    if (params.output == 'Feet')       return feet(params);
+        
 
     return 0;
 }
