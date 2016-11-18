@@ -18,7 +18,7 @@ layout = [
  * and teensy_pos. This value also affect to back plate splition.
  */
 split_pos = [
-    [5, 4.5, 4.75, 4.25, 4.75],
+//    [5, 4.5, 4.75, 4.25, 4.75],
     [10, 10.5, 9.75, 10.25, 10],
 ];
 
@@ -104,7 +104,7 @@ function getParameterDefinitions() {
     ];
 }
 
-const inf = 98765;
+const inf = 987654321;
 const unit = 19.05;
 const inch = 25.4;
 const epsilon = 0.01;
@@ -284,8 +284,6 @@ function Orientation()
     this.ppivot = new CSG.Vector2D([0, 0]);
     this.pivot = new CSG.Vector2D([0, 0]);
     this.pos = new CSG.Vector2D([0, 0]);
-    this.ix = new CSG.Vector2D([1, 0]);
-    this.yy = new CSG.Vector2D([0, -1]);
     this.dx = new CSG.Vector2D([1, 0]);
     this.dy = new CSG.Vector2D([0, -1]);
     this.rot = 0;
@@ -381,15 +379,15 @@ function Dimension()
 
     this.sizeX = function() {
         return this.right - this.left;
-    }
+    };
 
     this.sizeY = function() {
         return this.top_ - this.bottom;
-    }
+    };
 
     this.size = function() {
         return [this.sizeX(), this.sizeY()];
-    }
+    };
 
     this.shell = function(th=1.5) {
         return square([this.right-this.left, this.top_-this.bottom])
@@ -422,17 +420,12 @@ function gen_switches(layout, stabil)
     return [switches, dim];
 }
 
-function screw_holes(d, h)
+function screw_holes(obj)
 {
     let ret = [];
     for (let r = 0; r < screw_pos.length; ++r) {
         for (let c = 0; c < screw_pos[r].length; ++c) {
-            let y = -(0.5+r) * unit;
-            let x = screw_pos[r][c] * unit;
-            ret.push(cylinder({d: d, h: h, center: [true, true, false]})
-                    .translate([x, y, 0]));
-            ret.push(cylinder({d1: 6, d2: 2.6, h: 1.75, center: [true, true, false]})
-                    .translate([x, y, 0]));
+            ret.push(obj.translate([screw_pos[r][c] * unit, -(0.5+r) * unit, 0]))
         }
     }
     return union(ret);
@@ -443,15 +436,20 @@ function back_cover(params)
     let switches = gen_switches(layout, params);
     let sws = switches[0];
     let dim = switches[1];
-    let margin = 0.2;
+    let margin = 0.3;
     let th = 1.5;
     let x = dim.sizeX(), y = dim.sizeY();
 
     let m = 1 + margin;
     let ret = cube({size: [x-2*m, y-2*m, th]})
         .translate([0+m, -y+m, 0])
-        .union(screw_holes(5.2, 3))
-        .subtract(screw_holes(2.6, 4))
+        .union(screw_holes(cylinder({d1: 12, d2: 6, h: 3, center: [true, true, false]}))
+                .intersect(cube({size: [x-2*m, y-2*m, 12]}).translate([0+m, -y+m, 0]))
+                )
+        .subtract(screw_holes(union(
+                        cylinder({d: 3, h: 4, center: [true, true, false]}),
+                        cylinder({d: 6.2, h: 1.0, center: [true, true, false]}),
+                        cylinder({d1: 6.2, d2:3, h: 1.75, center: [true, true, false]}).translate([0, 0, 1.0]))))
         .subtract(teensy.cutout().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0-0.2]));
     if (params.split != 'No') {
         let deno = split_pos.length + 1;
@@ -474,21 +472,19 @@ function body(params)
     let s = dim.size();
     let ret = gen_case(s[0]/unit, s[1]/unit, params).translate([0, -s[1], 0]);
     let cutout = [];
-
     for (let i = 0; i < sws.length; i++) {
         cutout.push(sws[i].cutout3D().translate([0, 0, 12]));
     }
     ret = ret.subtract(cutout);
     ret = ret.union(union(
-        screw_holes(5.2, 8.5).translate([0, 0, 3]),
+        screw_holes(cylinder({d: 6, h: 8.5, center: [true, true, false]}).translate([0, 0, 3])),
         teensy.mount().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0])
     ));
     ret = ret.subtract(union(
-        screw_holes(2.6, 10),
+        screw_holes(cylinder({d: 2.6, h: 10, center: [true, true, false]})),
         cube({size: [12, 5, 8], center: [true, false, false]}).translate([teensy_pos*unit, 1, 1.0]),  // usb cable
         teensy.cutout().rotateY(180).translate([teensy_pos*unit, -1.0, 1.0])
     ));
-//    ret = ret.translate(dim.center().times(-1));
     if (params.split != 'No') {
         let deno = split_pos.length + 1;
         let n = parseInt(params.split);
@@ -597,7 +593,6 @@ const teensy = {
             .union(cube({size: [2.6, t.y+m, 0.4]}).mirroredX().rotateZ(180).translate([-t.x/2-m, 0, 0]));
     }
 }
-
 
 function split_mask_2D(num_split=0)
 {
@@ -708,7 +703,7 @@ function gen_case(w, h, params)
 
 function feet()
 {
-    let tilt = 9;  // tilt in degree, just approx
+    let tilt = 5;  ///< tilt in degree, assuming feet will be placed between 4th and 5th row
     let h = 4*unit*Math.tan(tilt*Math.PI/180.0);
     echo("feet height: " + h.toString());
     let h1 = 0.4*h;
@@ -732,7 +727,6 @@ function main(params)
     if (params.output == 'Plate')      return plate_2D(params);
     if (params.output == 'Back cover') return back_cover(params);
     if (params.output == 'Feet')       return feet(params);
-        
 
     return 0;
 }
