@@ -18,7 +18,7 @@ layout = [
  * and teensy_pos. This value also affect to back plate splition.
  */
 split_pos = [
-//    [5, 4.5, 4.75, 4.25, 4.75],
+    [5, 4.5, 4.75, 4.25, 4.75],
     [10, 10.5, 9.75, 10.25, 10],
 ];
 
@@ -49,7 +49,7 @@ function getParameterDefinitions() {
             caption: 'Output',
             values: ['Plate', 'Case', 'Back cover', 'Feet',
                      'Test 1u', 'Test 1u*4', 'Test 2u', 'Test 6u', 'Test 6.25u'],
-            initial: 'Back cover'
+            initial: 'Plate'
         },
         {
             name: 'split',
